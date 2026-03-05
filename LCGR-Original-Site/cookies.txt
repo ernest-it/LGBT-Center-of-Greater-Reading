@@ -1,0 +1,7 @@
+# HTTrack Website Copier Cookie File
+# This file format is compatible with Netscape cookies
+www.lgbtcenterofreading.com	TRUE	/	FALSE	1999999999	XSRF-TOKEN	1772747511|15g30pxk6biZ
+www.lgbtcenterofreading.com	TRUE	/	FALSE	1999999999	sec-fetch-unsupported	1
+www.lgbtcenterofreading.com	TRUE	/	FALSE	1999999999	SameSite	Lax
+www.lgbtcenterofreading.com	TRUE	/	FALSE	1999999999	ssr-caching	cache#desc=miss#varnish=miss_miss#dc#desc=fastly_virginia-pub_g
+

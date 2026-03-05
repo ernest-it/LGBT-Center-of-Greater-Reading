@@ -1,0 +1,24 @@
+HTTrack3.49-2+htsswf+htsjava launched on Thu, 05 Mar 2026 16:47:15 at https://www.lgbtcenterofreading.com/ +*.png +*.gif +*.jpg +*.jpeg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar
+(winhttrack -qwC2%Ps2u1%s%uN0%I0p3DaK0H0%kf2A25000%f#f -F "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)" -%F "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2014], %s -->" -%l "en, *" https://www.lgbtcenterofreading.com/ -O1 "C:\Users\logan\Nextcloud\Documents\PSU\Spring 2026\IST413\LGBT Center Of Reading\LCGR Original Site" +*.png +*.gif +*.jpg +*.jpeg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar )
+
+Information, Warnings and Errors reported for this mirror:
+note:	the hts-log.txt file, and hts-cache folder, may contain sensitive information,
+	such as username/password authentication for websites mirrored in this project
+	do not share these files/folders if you want these information to remain private
+
+16:51:56	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/t (from https://www.lgbtcenterofreading.com/)
+16:51:56	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/o (from https://www.lgbtcenterofreading.com/)
+16:54:49	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/media/emptystate.85a4add5.svg (from https://www.lgbtcenterofreading.com/)
+16:54:51	Error: 	"Bad Request" (400) at link https://www.lgbtcenterofreading.com/window.location.href (from https://www.lgbtcenterofreading.com/)
+16:54:52	Warning: 	Moved Permanently for https://www.lgbtcenterofreading.com/api/
+16:54:52	Warning: 	File has moved from https://www.lgbtcenterofreading.com/api/ to https://www.lgbtcenterofreading.com/api
+16:54:52	Warning: 	Moved Permanently for https://www.lgbtcenterofreading.com/envelope/
+16:54:52	Warning: 	File has moved from https://www.lgbtcenterofreading.com/envelope/ to https://www.lgbtcenterofreading.com/envelope
+16:54:53	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/feed.xml (from https://www.lgbtcenterofreading.com/)
+16:54:53	Error: 	"Bad Request" (400) at link https://www.lgbtcenterofreading.com/decodeURIComponent(e (from https://www.lgbtcenterofreading.com/)
+16:54:53	Error: 	"Bad Request" (400) at link https://www.lgbtcenterofreading.com/"https://static.wixstatic.com/media/8b8660_18b5b5922d14429f9067dfbb134b3f5ef002.jpg/v1/fill/w_473,h_266,enc_auto/file.jpeg" (from https://www.lgbtcenterofreading.com/online-trainings)
+16:54:54	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/api (from https://www.lgbtcenterofreading.com/api/)
+16:54:54	Error: 	"Not Found" (404) at link https://www.lgbtcenterofreading.com/envelope (from https://www.lgbtcenterofreading.com/envelope/)
+
+HTTrack Website Copier/3.49-2 mirror complete in 7 minutes 39 seconds : 176 links scanned, 164 files written (37453762 bytes overall) [16041696 bytes received at 34949 bytes/sec], 28221938 bytes transferred using HTTP compression in 52 files, ratio 23%, 2.1 requests per connection
+(9 errors, 4 warnings, 0 messages)
