@@ -19,10 +19,10 @@ export default function HeroBanner({
       }`}
     >
       {/* Background */}
-      {backgroundImage ? (
+      {backgroundImage && /^(https?:\/\/|\/)/i.test(backgroundImage) ? (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${backgroundImage})` }}
+          style={{ backgroundImage: `url(${backgroundImage.replace(/[()'"]/g, (c) => '\\' + c)})` }}
         />
       ) : (
         <div className="absolute inset-0 bg-hero-gradient" />

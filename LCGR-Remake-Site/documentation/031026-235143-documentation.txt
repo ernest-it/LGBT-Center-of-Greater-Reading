@@ -1,0 +1,83 @@
+# LCGR Remake Site Architecture Documentation
+
+## Overview
+The LCGR Remake Site is a full-stack web application structurally divided into three main modules:
+1. **Frontend**: Public-facing website built with Next.js and Tailwind CSS.
+2. **Backend**: RESTful API powered by Node.js, Express, and an SQLite database.
+3. **CMS-Admin**: Content Management System interface built with React and Vite.
+
+There is no formal monorepo tool (like Turborepo or Lerna) tying these together; each module operates independently and has its own `package.json` dependency tree. All three modules are containerized using Docker.
+
+---
+
+## 1. Frontend Architecture
+- **Framework**: Next.js 14.2.0 (App Router)
+- **Styling**: Tailwind CSS & PostCSS
+- **Animations / Icons**: Framer Motion & Lucide React
+- **Dependencies**: React 18, React DOM 18
+- **Containerization**: Included `Dockerfile` and `.dockerignore`.
+
+### Directory Structure
+- `/app`: Contains all route definitions. Core static routes include:
+  - `about`, `events`, `get-involved`, `programs`, `resources`, `services`, `store`
+  - Includes core layout (`layout.jsx`) and main page (`page.jsx`, `HomeClient.jsx`)
+  - Global styles defined in `globals.css`
+- `/components`: Contains reusable, modular UI components used across the Next app.
+  - Includes: `Navbar.jsx`, `Footer.jsx`, `HeroBanner.jsx`, `CTASection.jsx`, `AnimatedSection.jsx`, `ContentPage.jsx`, `EventCard.jsx`, `NewsSection.jsx`, `Newsletter.jsx`, `ServiceCard.jsx`, `TeamMemberCard.jsx`.
+- `/lib`: Houses utility functions or global frontend configurations.
+
+---
+
+## 2. Backend Architecture
+- **Framework**: Node.js with Express 4.21.1
+- **Database**: SQLite (managed via `better-sqlite3`)
+- **Authentication**: JWT (`jsonwebtoken`) and password hashing via `bcryptjs`
+- **Security & Middleware**: `helmet`, `cors`, `express-rate-limit`, `cookie-parser`, `morgan`
+- **File Uploads**: Managed via `multer` locally to the `uploads/` directory
+- **Containerization**: Included `Dockerfile` and `.dockerignore`.
+
+### Directory Structure
+- `/database`: 
+  - `db.js`: Database connection singleton
+  - `schema.js`: SQLite table creation/definitions
+  - `seed.js`: Database hydration script with initial data
+  - `lcgr.db`: The actual SQLite database file
+- `/routes`: Express controllers routing request to services
+  - Includes: `auth.js`, `banners.js`, `newsEvents.js`, `staticContent.js`, `team.js`, `upload.js`
+- `/middleware`: Houses authorization, validation, or other Express middleware rules.
+- `/uploads`: Directory intended for storing static uploaded assets (banners, avatars, etc.)
+- `server.js`: The entry point for the Express backend.
+
+---
+
+## 3. CMS-Admin Architecture
+- **Framework**: React 18 (SPA) built with Vite
+- **Routing**: React Router DOM 6
+- **Styling**: Tailwind CSS, PostCSS, Autoprefixer
+- **Networking**: `axios` for fetching from the backend API
+- **Notifications/UX**: `react-hot-toast`, `lucide-react`
+- **Containerization**: Included `Dockerfile`, `nginx.conf` (for serving the Vite bundle), and `.dockerignore`.
+
+### Directory Structure
+- `/src/pages`: Page-level components rendering CMS admin views.
+- `/src/components`: UI components customized for the admin interface.
+- `/src/context`: React Context providers for handling global state (likely User/Auth).
+- `/src/api`: Reusable API invocation layer (Axios configurations).
+- `main.jsx` & `App.jsx`: Entry point files for the Vite React bundle.
+
+---
+
+## Build and Run Process
+To run or develop the project locally, each independent module must be started concurrently in separate terminal sessions:
+
+- **Frontend**: 
+  - Run: `npm run dev` 
+  - Generates Next.js dev server. Build with `npm run build`.
+- **Backend**: 
+  - Run: `npm run dev` (starts via `node --watch server.js`) or `npm start`.
+  - Database initialization: `npm run seed`.
+- **CMS-Admin**: 
+  - Run: `npm run dev` 
+  - Starts the Vite local development server. Build with `npm run build`.
+
+Alternatively, each module contains a `Dockerfile` for standardized deployment.

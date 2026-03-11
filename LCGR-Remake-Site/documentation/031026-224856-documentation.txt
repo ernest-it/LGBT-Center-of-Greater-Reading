@@ -1,0 +1,35 @@
+OPERATIONAL FIX: Docker Compose Port Conflict on Backend Service
+Date: 2026-03-10
+
+ISSUE
+-----
+Docker Compose failed to start the backend service with error:
+  "Bind for 0.0.0.0:3001 failed: port is already allocated"
+
+DIAGNOSIS
+---------
+- Port 3001 was held by Docker's own networking proxy (com.docker.backend.exe, PID 43248)
+  from stale containers stuck in a "Created" state.
+- The stale containers originated from a previous failed startup attempt where a
+  JWT_SECRET configuration error left them in limbo (neither running nor fully removed).
+
+RESOLUTION
+----------
+1. Ran `docker compose down` to fully tear down stale containers and release bound ports/networks.
+2. Ran `docker compose up -d` to cleanly restart all services.
+
+No code or configuration changes were required -- this was purely an operational fix.
+
+VERIFICATION
+------------
+All 3 services confirmed running after restart:
+  - backend  : healthy
+  - frontend : up
+  - cms-admin: up
+
+NOTES
+-----
+- If this recurs, check for orphaned containers with `docker ps -a` and remove them
+  with `docker compose down` before retrying.
+- Root cause was the earlier JWT_SECRET misconfiguration that has since been resolved
+  (see 031026-224456-documentation.txt).

@@ -1,0 +1,18 @@
+Fix - Frontend Not Accessible on localhost:3000
+================================================
+Date: 03/11/26
+
+ISSUE:
+Next.js standalone server inside Docker was binding to the container's internal hostname instead of 0.0.0.0, making it unreachable from the host.
+
+CAUSE:
+Next.js standalone output uses the HOSTNAME env var to determine the listen address. Without it, it defaults to the container hostname.
+
+FIX:
+Added HOSTNAME: "0.0.0.0" to the frontend service environment in docker-compose.yml.
+
+FILE CHANGED:
+docker-compose.yml
+
+VERIFICATION:
+curl returns HTTP 200 on localhost:3000.

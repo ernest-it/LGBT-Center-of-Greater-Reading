@@ -1,7 +1,7 @@
 const express = require('express');
 const getDb = require('../database/db');
 const authenticate = require('../middleware/auth');
-const { validateMaxLength } = require('../middleware/validate');
+const { validateMaxLength, sanitizeHtml, validateUrl, validateInteger, validateBoolean } = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -68,10 +68,16 @@ router.post('/', authenticate, (req, res) => {
       validateMaxLength(page_section, 'page_section', 50),
       validateMaxLength(alt_text, 'alt_text', 255),
       validateMaxLength(link_url, 'link_url', 500),
+      validateUrl(image_url, 'image_url'),
+      validateUrl(link_url, 'link_url'),
+      validateInteger(display_order, 'display_order'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanAltText = sanitizeHtml(alt_text);
 
     const db = getDb();
     const result = db.prepare(`
@@ -80,7 +86,7 @@ router.post('/', authenticate, (req, res) => {
     `).run(
       page_section,
       image_url,
-      alt_text || null,
+      cleanAltText || null,
       link_url || null,
       display_order ?? 0,
       is_active ?? 1
@@ -114,10 +120,16 @@ router.put('/:id', authenticate, (req, res) => {
       validateMaxLength(page_section, 'page_section', 50),
       validateMaxLength(alt_text, 'alt_text', 255),
       validateMaxLength(link_url, 'link_url', 500),
+      validateUrl(image_url, 'image_url'),
+      validateUrl(link_url, 'link_url'),
+      validateInteger(display_order, 'display_order'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanAltText = alt_text !== undefined ? sanitizeHtml(alt_text) : existing.alt_text;
 
     db.prepare(`
       UPDATE banners SET
@@ -132,7 +144,7 @@ router.put('/:id', authenticate, (req, res) => {
     `).run(
       page_section ?? existing.page_section,
       image_url ?? existing.image_url,
-      alt_text !== undefined ? alt_text : existing.alt_text,
+      cleanAltText,
       link_url !== undefined ? link_url : existing.link_url,
       display_order ?? existing.display_order,
       is_active !== undefined ? is_active : existing.is_active,

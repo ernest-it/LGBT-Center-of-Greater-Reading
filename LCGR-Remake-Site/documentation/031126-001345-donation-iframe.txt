@@ -1,0 +1,11 @@
+TITLE: Fix - Donation Form Isolated in iframe
+
+ISSUE: Silent Partner Software donation script scans all script tags on the page, conflicting with Next.js chunks and causing React hydration errors (#425, #418, #423) and "Invalid URL" warnings.
+
+FIX: Isolated the donation form in a standalone HTML page loaded via iframe:
+- Created frontend/public/donate-embed.html with only the Silent Partner script
+- Updated donate page to use iframe src="/donate-embed.html" instead of injecting the script into React's DOM
+- Added separate CSP headers for /donate-embed.html allowing api.silentpartnersoftware.com
+- Main site CSP remains locked down; donate-embed.html has X-Frame-Options: SAMEORIGIN
+
+FILES: frontend/public/donate-embed.html (new), frontend/app/get-involved/donate/page.jsx, frontend/next.config.js

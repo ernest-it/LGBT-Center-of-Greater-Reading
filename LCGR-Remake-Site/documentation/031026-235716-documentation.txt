@@ -1,0 +1,19 @@
+Donation Page - Embedded Silent Partner Software Form
+=====================================================
+
+Date: 2026-03-10
+
+CHANGES:
+
+1. frontend/app/get-involved/donate/page.jsx
+   - Added useEffect + useRef to dynamically load the Silent Partner Software donation script
+   - Script URL: https://api.silentpartnersoftware.com/forms/v1/forms/bf17148f-7593-41e6-b4ef-17bf4fbf0e78/js
+   - Replaced the static "Donate Online" button card with a container div that loads the embedded donation form
+   - Kept the "Mail a Check" card below the donation form
+   - Script loads asynchronously with a guard to prevent double-loading
+
+2. frontend/next.config.js
+   - Updated Content-Security-Policy to allow api.silentpartnersoftware.com in script-src, connect-src, and frame-src directives
+   - Required so the donation widget script and any associated resources load without CSP violations
+
+PLATFORM: Silent Partner Software - nonprofit fundraising/donation platform (same as used on current live site at lgbtcenterofreading.com/donate)

@@ -1,21 +1,13 @@
 require('dotenv').config();
 
 // --- JWT Secret Validation ---
-const DEFAULT_JWT_SECRET = 'lcgr-site-secret-key-change-in-production';
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET) {
-    console.error(
-      'FATAL: JWT_SECRET is not set or is still the default value.\n' +
-      'You MUST set a strong, unique JWT_SECRET environment variable in production.\n' +
-      'Generate one with: openssl rand -base64 32'
-    );
-    process.exit(1);
-  }
-} else if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET) {
-  console.warn(
-    'WARNING: Using default JWT secret. This is acceptable for local development only.\n' +
-    'Set a strong JWT_SECRET before deploying to production.'
+if (!process.env.JWT_SECRET) {
+  console.error(
+    'FATAL: JWT_SECRET environment variable is not set.\n' +
+    'You MUST set a strong, unique JWT_SECRET environment variable before starting the server.\n' +
+    'Generate one with: openssl rand -base64 32'
   );
+  process.exit(1);
 }
 
 const express = require('express');
@@ -49,6 +41,16 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Cookie parser (for httpOnly JWT cookies)
 app.use(cookieParser());
 
+// General API rate limiter: 100 requests per minute per IP
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
+
 // Rate limiting on login endpoint (10 attempts per 15 min)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -59,6 +61,17 @@ const loginLimiter = rateLimit({
 });
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/setup', loginLimiter);
+app.use('/api/auth/refresh', loginLimiter);
+
+// Upload rate limiter: 10 requests per hour per IP
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many upload requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/upload', uploadLimiter);
 
 // CORS: read allowed origins from environment variable
 const corsOrigins = process.env.CORS_ORIGINS

@@ -1,7 +1,7 @@
 const express = require('express');
 const getDb = require('../database/db');
 const authenticate = require('../middleware/auth');
-const { validateMaxLength, validateEnum } = require('../middleware/validate');
+const { validateMaxLength, validateEnum, sanitizeHtml, validateUrl, validateInteger, validateBoolean } = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -72,23 +72,30 @@ router.post('/', authenticate, (req, res) => {
       validateMaxLength(title, 'title', 200),
       validateMaxLength(description, 'description', 5000),
       validateMaxLength(location, 'location', 200),
+      validateUrl(image_url, 'image_url'),
+      validateBoolean(is_featured, 'is_featured'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanTitle = sanitizeHtml(title);
+    const cleanDescription = sanitizeHtml(description);
+    const cleanLocation = sanitizeHtml(location);
 
     const db = getDb();
     const result = db.prepare(`
       INSERT INTO news_events (title, description, image_url, date, end_date, type, location, is_featured, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      title,
-      description || null,
+      cleanTitle,
+      cleanDescription || null,
       image_url || null,
       date || null,
       end_date || null,
       type,
-      location || null,
+      cleanLocation || null,
       is_featured ?? 0,
       is_active ?? 1
     );
@@ -125,10 +132,17 @@ router.put('/:id', authenticate, (req, res) => {
       validateMaxLength(title, 'title', 200),
       validateMaxLength(description, 'description', 5000),
       validateMaxLength(location, 'location', 200),
+      validateUrl(image_url, 'image_url'),
+      validateBoolean(is_featured, 'is_featured'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanTitle = title !== undefined ? sanitizeHtml(title) : undefined;
+    const cleanDescription = description !== undefined ? sanitizeHtml(description) : undefined;
+    const cleanLocation = location !== undefined ? sanitizeHtml(location) : undefined;
 
     db.prepare(`
       UPDATE news_events SET
@@ -144,13 +158,13 @@ router.put('/:id', authenticate, (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
-      title ?? existing.title,
-      description !== undefined ? description : existing.description,
+      cleanTitle ?? existing.title,
+      cleanDescription !== undefined ? cleanDescription : existing.description,
       image_url !== undefined ? image_url : existing.image_url,
       date !== undefined ? date : existing.date,
       end_date !== undefined ? end_date : existing.end_date,
       type ?? existing.type,
-      location !== undefined ? location : existing.location,
+      cleanLocation !== undefined ? cleanLocation : existing.location,
       is_featured !== undefined ? is_featured : existing.is_featured,
       is_active !== undefined ? is_active : existing.is_active,
       req.params.id

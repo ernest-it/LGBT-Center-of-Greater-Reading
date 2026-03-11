@@ -70,6 +70,19 @@ function createTables() {
     db.exec("ALTER TABLE static_content ADD COLUMN image_url TEXT");
   }
 
+  // Migration: add token_version, failed_attempts, locked_until to users if they don't exist
+  const userColumns = db.prepare("PRAGMA table_info(users)").all();
+  const userColNames = userColumns.map((col) => col.name);
+  if (!userColNames.includes('token_version')) {
+    db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1");
+  }
+  if (!userColNames.includes('failed_attempts')) {
+    db.exec("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0");
+  }
+  if (!userColNames.includes('locked_until')) {
+    db.exec("ALTER TABLE users ADD COLUMN locked_until DATETIME");
+  }
+
   console.log('Database tables created successfully.');
 }
 

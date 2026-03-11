@@ -1,0 +1,5 @@
+TITLE: Donation Form Repositioned Under Impact Stats
+
+FILE: frontend/app/get-involved/donate/page.jsx
+
+CHANGE: Moved the embedded Silent Partner Software donation form from the "Ways to Give" section to directly below the impact stats grid ("See How Your Donation Makes a Difference"). The form now appears immediately after the $25-$1000 impact cards, making it the natural next step after seeing the impact. The "Ways to Give" section below retains the "Mail a Check" card and contact info.

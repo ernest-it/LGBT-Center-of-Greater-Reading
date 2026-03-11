@@ -1,0 +1,79 @@
+================================================================================
+  Documentation: Fix docker-compose.yml Environment Parsing Error
+  Date: 03/10/2026 22:44:56
+================================================================================
+
+SUMMARY
+-------
+Fixed a docker-compose.yml parsing error that prevented the compose stack from
+starting. Also created a missing .env file required by the compose configuration.
+
+
+WHAT CHANGED AND WHY
+--------------------
+1. docker-compose.yml - Environment syntax conversion
+
+   Problem: Docker Compose threw the error:
+     "services.backend.environment.[1]: unexpected type map[string]interface {}"
+
+   Root cause: The environment blocks used list syntax (- KEY=VALUE), which
+   cannot properly handle variable substitutions containing special characters
+   such as colons, spaces, and commas. Specifically, patterns like
+   ${VAR:?error message} and ${VAR:-default} were being misinterpreted by
+   the YAML parser as nested map types instead of plain strings.
+
+   Fix: Converted ALL environment blocks from list syntax to map syntax:
+     Before (list):   - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+     After (map):     JWT_SECRET: "${JWT_SECRET:?JWT_SECRET is required}"
+
+   This was applied to both the backend service (5 variables) and the
+   frontend service (3 variables).
+
+2. .env - Created with auto-generated JWT_SECRET
+
+   Problem: The compose file references ${JWT_SECRET} via variable
+   substitution, but no .env file existed to provide the value.
+
+   Fix: Created .env with a randomly generated JWT_SECRET value.
+
+
+FILES AFFECTED
+--------------
+- docker-compose.yml  (modified - environment syntax conversion)
+- .env                (created  - JWT_SECRET value)
+
+
+TECHNICAL DETAILS
+-----------------
+YAML list syntax for environment variables:
+  environment:
+    - KEY=VALUE
+
+YAML map syntax for environment variables:
+  environment:
+    KEY: "VALUE"
+
+Both are valid Docker Compose formats, but map syntax handles complex variable
+substitution expressions more reliably because the values are explicitly quoted
+strings. List syntax can cause the YAML parser to misinterpret substitution
+expressions that contain colons (which YAML treats as key-value separators).
+
+Services updated:
+  - backend:  NODE_ENV, PORT, MONGODB_URI, JWT_SECRET, CORS_ORIGIN
+  - frontend: NODE_ENV, REACT_APP_API_URL, PORT
+
+
+HOW TO VERIFY THE FIX
+----------------------
+Run the following command from the project root:
+
+  docker compose config --quiet
+
+If the command exits with code 0 and no output, the compose file is valid.
+To further verify, start the stack:
+
+  docker compose up --build
+
+Confirm that both backend and frontend services start without environment-
+related errors.
+================================================================================

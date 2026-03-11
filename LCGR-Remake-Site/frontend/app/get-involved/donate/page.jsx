@@ -65,6 +65,17 @@ export default function DonatePage() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Embedded Donation Form (isolated in iframe to prevent script conflicts) */}
+          <AnimatedSection variant="slideUp" className="mt-14">
+            <iframe
+              src="/donate-embed"
+              className="w-full max-w-2xl mx-auto border-0 rounded-2xl"
+              style={{ minHeight: '600px' }}
+              title="Donation Form"
+              loading="lazy"
+            />
+          </AnimatedSection>
         </div>
       </section>
 
@@ -81,12 +92,7 @@ export default function DonatePage() {
                 All donations are tax-deductible to the fullest extent permitted by law.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-10">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                  <h3 className="text-lg font-bold text-secondary mb-2">Online Donation</h3>
-                  <p className="text-secondary/60 text-sm mb-4">Make a secure one-time or recurring donation online.</p>
-                  <button className="btn-accent w-full">Donate Online</button>
-                </div>
+              <div className="max-w-md mx-auto mb-10">
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                   <h3 className="text-lg font-bold text-secondary mb-2">Mail a Check</h3>
                   <p className="text-secondary/60 text-sm mb-4">

@@ -1,7 +1,7 @@
 const express = require('express');
 const getDb = require('../database/db');
 const authenticate = require('../middleware/auth');
-const { validateMaxLength } = require('../middleware/validate');
+const { validateMaxLength, validateUrl } = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -102,6 +102,7 @@ router.put('/:page_name/:section_name', authenticate, (req, res) => {
       validateMaxLength(page_name, 'page_name', 50),
       validateMaxLength(section_name, 'section_name', 100),
       validateMaxLength(text_content, 'text_content', 50000),
+      validateUrl(image_url, 'image_url'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });

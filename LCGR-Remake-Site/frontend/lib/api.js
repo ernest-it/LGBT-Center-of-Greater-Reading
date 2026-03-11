@@ -1,4 +1,9 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Server-side rendering uses an internal URL (for Docker networking),
+// falling back to the public URL. Client-side always uses the public URL.
+const isServer = typeof window === 'undefined';
+const API_BASE = isServer
+  ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api')
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api');
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 async function fetchAPI(endpoint, { dynamic = false } = {}) {
@@ -20,20 +25,20 @@ export function getImageUrl(path) {
 }
 
 export async function getBanners(pageSection) {
-  return fetchAPI(`/banners?page_section=${pageSection}`);
+  return fetchAPI(`/banners?page_section=${encodeURIComponent(pageSection)}`);
 }
 
 export async function getNewsEvents(type) {
-  return fetchAPI(`/news-events?type=${type}`);
+  return fetchAPI(`/news-events?type=${encodeURIComponent(type)}`);
 }
 
 export async function getContent(pageName, sectionName) {
-  const query = sectionName ? `?section=${sectionName}` : '';
-  return fetchAPI(`/content/${pageName}${query}`);
+  const query = sectionName ? `?section=${encodeURIComponent(sectionName)}` : '';
+  return fetchAPI(`/content/${encodeURIComponent(pageName)}${query}`);
 }
 
 export async function getTeamMembers(type, { dynamic = false } = {}) {
-  const query = type ? `?type=${type}` : '';
+  const query = type ? `?type=${encodeURIComponent(type)}` : '';
   return fetchAPI(`/team${query}`, { dynamic });
 }
 

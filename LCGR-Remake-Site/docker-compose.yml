@@ -1,0 +1,79 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      DB_PATH: "./database/lcgr.db"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}"
+      NODE_ENV: "${NODE_ENV:-development}"
+    volumes:
+      - db-data:/app/database
+      - uploads-data:/app/uploads
+    networks:
+      - internal
+      - public
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+        - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+    ports:
+      - "3000:3000"
+    environment:
+      HOSTNAME: "0.0.0.0"
+      INTERNAL_API_URL: "http://backend:3001/api"
+      NEXT_PUBLIC_API_URL: "http://localhost:3001/api"
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:3001"
+    networks:
+      - internal
+      - public
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  cms-admin:
+    build:
+      context: ./cms-admin
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:3001/api
+    ports:
+      - "5173:5173"
+    networks:
+      - public
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  internal:
+    driver: bridge
+  public:
+    driver: bridge
+
+volumes:
+  db-data:
+  uploads-data:

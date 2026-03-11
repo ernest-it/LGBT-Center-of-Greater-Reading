@@ -1,0 +1,213 @@
+================================================================================
+SECURITY REMEDIATION - ALL AUDIT FINDINGS FIXED
+================================================================================
+Date: 2026-03-10
+Timestamp: 031026-234722
+Project: LCGR Remake Site
+================================================================================
+
+This document records all security fixes applied to the LCGR project, organized
+by severity level from the security audit.
+
+================================================================================
+CRITICAL FIXES
+================================================================================
+
+C1: Hardcoded JWT Secret Removed
+---------------------------------------------------------------------------
+- Removed the hardcoded default JWT secret from server.js.
+- Server now refuses to start without JWT_SECRET set in environment variables
+  in ALL environments (development, staging, production).
+
+C2: JWT Algorithm Pinned
+---------------------------------------------------------------------------
+- Pinned JWT algorithm to HS256 in all jwt.sign() and jwt.verify() calls.
+- Applied in middleware/auth.js and routes/auth.js.
+- Prevents algorithm confusion attacks (e.g., none algorithm, RS256/HS256
+  key confusion).
+
+================================================================================
+HIGH FIXES
+================================================================================
+
+H1+H2: Token Revocation System
+---------------------------------------------------------------------------
+- Added token_version column to users table in database schema.
+- JWT payload now includes tokenVersion claim.
+- Auth middleware verifies tokenVersion against the database on every request.
+- Refresh endpoint enforces a 7-day maximum session age.
+- Refresh endpoint verifies user still exists in DB before issuing new token.
+- Enables immediate invalidation of all tokens for a user by incrementing
+  their token_version.
+
+H3: Rate Limiting
+---------------------------------------------------------------------------
+- Added general API rate limiter: 100 requests per minute.
+- Added upload rate limiter: 10 requests per hour.
+- Added refresh token rate limiter: 10 requests per 15 minutes.
+- Protects against brute force attacks, denial of service, and abuse.
+
+H4: Timing Oracle Fixed
+---------------------------------------------------------------------------
+- A dummy bcrypt hash comparison now always runs even when the requested
+  user is not found in the database.
+- Eliminates timing-based username enumeration where an attacker could
+  determine valid usernames by measuring response times.
+
+H5+H6: CMS Auth Migrated from localStorage to httpOnly Cookies
+---------------------------------------------------------------------------
+- Migrated CMS authentication from localStorage-based Bearer tokens to
+  httpOnly cookie-based sessions.
+- Removed Bearer token storage from localStorage entirely.
+- AuthContext now verifies the session via /auth/me endpoint on
+  initialization instead of trusting localStorage.
+- Only a non-sensitive user UI hint is stored in localStorage (for display
+  purposes, not authentication).
+- Mitigates XSS-based token theft since httpOnly cookies are not accessible
+  to JavaScript.
+
+================================================================================
+MEDIUM FIXES
+================================================================================
+
+M1: Persistent Account Lockout
+---------------------------------------------------------------------------
+- Account lockout state now persists in the database using failed_attempts
+  and locked_until columns on the users table.
+- Replaced the previous in-memory Map implementation which was lost on
+  server restart, allowing lockout bypass.
+
+M2: HTML Sanitization
+---------------------------------------------------------------------------
+- Added sanitize-html library for input sanitization.
+- All text fields are sanitized: alt_text, title, description, location,
+  name, bio.
+- Applied in routes: banners, newsEvents, team.
+- Note: text_content in staticContent is intentionally NOT sanitized as it
+  is a CMS content field that requires HTML markup.
+
+M3+M4: URL Validation
+---------------------------------------------------------------------------
+- Added URL validation for image_url and link_url fields.
+- Rejects dangerous protocols: javascript:, data:, vbscript:.
+- Only allows: /uploads/* paths, relative paths, and http/https URLs.
+- Prevents stored XSS via malicious URLs.
+
+M5: Username Validation
+---------------------------------------------------------------------------
+- Added username validation: alphanumeric characters and underscores only.
+- Length restricted to 3-30 characters.
+- Prevents injection via username fields.
+
+M6: Password Max Length
+---------------------------------------------------------------------------
+- Added maximum password length of 72 characters.
+- This is the bcrypt truncation limit; passwords beyond 72 characters are
+  silently truncated by bcrypt, which could cause unexpected behavior.
+
+M7: CSRF Mitigation
+---------------------------------------------------------------------------
+- Partially mitigated by removing localStorage token usage.
+- Authentication is now purely cookie-based with sameSite: lax attribute.
+- sameSite: lax prevents cookies from being sent on cross-origin POST
+  requests, mitigating common CSRF attack vectors.
+
+M8+L1: Security Headers
+---------------------------------------------------------------------------
+- Added security headers to Next.js frontend via next.config.js:
+  - Content-Security-Policy (CSP)
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - X-XSS-Protection: 1; mode=block
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Permissions-Policy (restricts camera, microphone, geolocation)
+- Disabled X-Powered-By header to reduce information leakage.
+
+M9: HeroBanner URL Validation
+---------------------------------------------------------------------------
+- HeroBanner component now validates backgroundImage URL.
+- URL must start with http://, https://, or /.
+- Escapes parentheses and quotes before CSS interpolation.
+- Prevents CSS injection via malicious background image URLs.
+
+================================================================================
+LOW FIXES
+================================================================================
+
+L2: Bearer Token Extraction Fixed
+---------------------------------------------------------------------------
+- Fixed bearer token extraction in auth middleware.
+- Uses proper split() method with case-insensitive check.
+- Replaces fragile string replace approach that could fail with
+  unexpected casing.
+
+L3: Input Type Validation
+---------------------------------------------------------------------------
+- Added validateInteger and validateBoolean utility functions.
+- Applied to display_order, is_active, and is_featured fields in all
+  routes.
+- Prevents type confusion and ensures correct database operations.
+
+L4: Structured Security Event Logging
+---------------------------------------------------------------------------
+- Added structured JSON security event logging.
+- Events logged: failed logins, successful logins, account lockouts,
+  initial setup, and registration.
+- Each log entry includes: event type, username, IP address, and
+  timestamp.
+- Enables security monitoring, incident response, and audit trails.
+
+L6: Query Parameter Encoding
+---------------------------------------------------------------------------
+- URL-encoded all query parameters in frontend/lib/api.js using
+  encodeURIComponent().
+- Prevents injection via URL query parameters.
+
+L7: Newsletter Form Fixed
+---------------------------------------------------------------------------
+- Newsletter form now shows "Coming soon" with a disabled state.
+- Replaces the previous misleading "Sent!" confirmation that suggested
+  functionality that did not exist.
+
+================================================================================
+FILES CHANGED
+================================================================================
+
+Backend:
+  - server.js
+  - middleware/auth.js
+  - middleware/validate.js
+  - database/schema.js
+  - routes/auth.js
+  - routes/banners.js
+  - routes/newsEvents.js
+  - routes/team.js
+  - routes/staticContent.js
+  - package.json
+
+Frontend:
+  - next.config.js
+  - components/HeroBanner.jsx
+  - components/Newsletter.jsx
+  - lib/api.js
+
+CMS Admin:
+  - src/api/client.js
+  - src/context/AuthContext.jsx
+
+================================================================================
+NEW DEPENDENCIES
+================================================================================
+
+  sanitize-html ^2.13.0
+
+================================================================================
+VERIFICATION
+================================================================================
+
+- All containers rebuilt and running healthy.
+- Frontend security headers confirmed via curl inspection.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

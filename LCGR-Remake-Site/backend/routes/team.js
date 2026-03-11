@@ -1,7 +1,7 @@
 const express = require('express');
 const getDb = require('../database/db');
 const authenticate = require('../middleware/auth');
-const { validateMaxLength } = require('../middleware/validate');
+const { validateMaxLength, sanitizeHtml, validateUrl, validateInteger, validateBoolean } = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -72,19 +72,26 @@ router.post('/', authenticate, (req, res) => {
       validateMaxLength(name, 'name', 100),
       validateMaxLength(title, 'title', 100),
       validateMaxLength(bio, 'bio', 5000),
+      validateUrl(image_url, 'image_url'),
+      validateInteger(display_order, 'display_order'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanName = sanitizeHtml(name);
+    const cleanTitle = sanitizeHtml(title);
+    const cleanBio = sanitizeHtml(bio);
 
     const db = getDb();
     const result = db.prepare(`
       INSERT INTO team_members (name, title, bio, image_url, display_order, is_active, member_type)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
-      name,
-      title || null,
-      bio || null,
+      cleanName,
+      cleanTitle || null,
+      cleanBio || null,
       image_url || null,
       display_order ?? 0,
       is_active ?? 1,
@@ -123,10 +130,17 @@ router.put('/:id', authenticate, (req, res) => {
       validateMaxLength(name, 'name', 100),
       validateMaxLength(title, 'title', 100),
       validateMaxLength(bio, 'bio', 5000),
+      validateUrl(image_url, 'image_url'),
+      validateInteger(display_order, 'display_order'),
+      validateBoolean(is_active, 'is_active'),
     ].filter(Boolean);
     if (lengthErrors.length > 0) {
       return res.status(400).json({ error: lengthErrors[0] });
     }
+
+    const cleanName = name !== undefined ? sanitizeHtml(name) : undefined;
+    const cleanTitle = title !== undefined ? sanitizeHtml(title) : undefined;
+    const cleanBio = bio !== undefined ? sanitizeHtml(bio) : undefined;
 
     db.prepare(`
       UPDATE team_members SET
@@ -140,9 +154,9 @@ router.put('/:id', authenticate, (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
-      name ?? existing.name,
-      title !== undefined ? title : existing.title,
-      bio !== undefined ? bio : existing.bio,
+      cleanName ?? existing.name,
+      cleanTitle !== undefined ? cleanTitle : existing.title,
+      cleanBio !== undefined ? cleanBio : existing.bio,
       image_url !== undefined ? image_url : existing.image_url,
       display_order ?? existing.display_order,
       is_active !== undefined ? is_active : existing.is_active,

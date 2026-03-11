@@ -21,15 +21,10 @@ export function AuthProvider({ children }) {
 
   const refreshToken = useCallback(async () => {
     try {
-      const { data } = await client.post('/auth/refresh');
-      // Update localStorage fallback with the new token
-      if (data.token) {
-        localStorage.setItem('lcgr_token', data.token);
-      }
+      await client.post('/auth/refresh');
     } catch {
       // If refresh fails, the session has expired — log out
       clearRefreshTimer();
-      localStorage.removeItem('lcgr_token');
       localStorage.removeItem('lcgr_user');
       setUser(null);
     }
@@ -51,17 +46,17 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // Check for existing token
-        const token = localStorage.getItem('lcgr_token');
-        const savedUser = localStorage.getItem('lcgr_user');
-        if (token && savedUser) {
-          try {
-            setUser(JSON.parse(savedUser));
+        // Verify session against the server
+        try {
+          const { data: meData } = await client.get('/auth/me');
+          if (meData?.user) {
+            setUser(meData.user);
+            localStorage.setItem('lcgr_user', JSON.stringify(meData.user));
             startRefreshTimer();
-          } catch {
-            localStorage.removeItem('lcgr_token');
-            localStorage.removeItem('lcgr_user');
           }
+        } catch {
+          // Session invalid or expired — clear UI hint
+          localStorage.removeItem('lcgr_user');
         }
       } catch {
         // If backend is down, just proceed to login
@@ -75,16 +70,14 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const response = await client.post('/auth/login', { username, password });
-    const { token, user: userData } = response.data;
-    localStorage.setItem('lcgr_token', token);
+    const { user: userData } = response.data;
     localStorage.setItem('lcgr_user', JSON.stringify(userData));
     setUser(userData);
     startRefreshTimer();
     return userData;
   };
 
-  const setAuthData = (token, userData) => {
-    localStorage.setItem('lcgr_token', token);
+  const setAuthData = (_token, userData) => {
     localStorage.setItem('lcgr_user', JSON.stringify(userData));
     setUser(userData);
     setNeedsSetup(false);
@@ -98,7 +91,6 @@ export function AuthProvider({ children }) {
     } catch {
       // Even if the server call fails, clear local state
     }
-    localStorage.removeItem('lcgr_token');
     localStorage.removeItem('lcgr_user');
     setUser(null);
   };

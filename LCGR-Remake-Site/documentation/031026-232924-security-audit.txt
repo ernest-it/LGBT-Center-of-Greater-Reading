@@ -1,0 +1,239 @@
+================================================================================
+                    SECURITY AUDIT REPORT - LCGR REMAKE SITE
+================================================================================
+
+Date:       2026-03-10
+Timestamp:  031026-232924
+Project:    LCGR Remake Site
+Type:       Comprehensive Security Audit
+
+================================================================================
+                              AUDIT SCOPE
+================================================================================
+
+Three parallel audits were performed:
+
+  1. BACKEND CODE REVIEW
+     - All routes, middleware, authentication logic, and database queries
+
+  2. FRONTEND / CMS ADMIN CODE REVIEW
+     - React components, authentication flow, and client-side security
+
+  3. LIVE ENDPOINT PENETRATION TESTING
+     - Security headers, CORS policy, injection vectors, rate limiting,
+       and path traversal
+
+================================================================================
+                         CRITICAL FINDINGS (2)
+================================================================================
+
+C1. DEFAULT JWT SECRET HARDCODED
+    Location:   server.js, line 4
+    Severity:   CRITICAL
+    Detail:     A default JWT secret is hardcoded in the source code. Anyone
+                with access to the source can forge authentication tokens for
+                non-production deployments.
+
+C2. NO JWT ALGORITHM RESTRICTION
+    Location:   jwt.verify() and jwt.sign() calls throughout auth code
+    Severity:   CRITICAL
+    Detail:     Neither jwt.verify() nor jwt.sign() is called with an
+                explicit algorithms option. This creates risk of an alg:none
+                bypass attack where an attacker crafts a token with no
+                signature that the server accepts as valid.
+    Fix:        Pin algorithm to HS256 in all jwt.verify() and jwt.sign()
+                calls by passing { algorithms: ['HS256'] }.
+
+================================================================================
+                           HIGH FINDINGS (6)
+================================================================================
+
+H1. INDEFINITE SESSION EXTENSION VIA TOKEN REFRESH
+    Location:   routes/auth.js, lines 211-243
+    Severity:   HIGH
+    Detail:     The token refresh endpoint allows indefinite session extension.
+                There is no maximum session lifetime, no token rotation, and
+                no revocation mechanism.
+
+H2. NO TOKEN INVALIDATION ON PASSWORD CHANGE OR USER DELETION
+    Severity:   HIGH
+    Detail:     Tokens remain valid for their full 24-hour lifetime even after
+                a password change or user deletion. A compromised token cannot
+                be revoked.
+
+H3. INCOMPLETE RATE LIMITING
+    Severity:   HIGH
+    Detail:     Rate limiting is only applied to the login and setup endpoints.
+                The following endpoints have no rate limiting:
+                  - /api/upload
+                  - /api/auth/register
+                  - /api/auth/refresh
+
+H4. USERNAME ENUMERATION VIA TIMING ATTACK
+    Location:   routes/auth.js, lines 116-118
+    Severity:   HIGH
+    Detail:     bcrypt comparison only runs when a user is found. The timing
+                difference between a valid and invalid username reveals whether
+                an account exists.
+    Fix:        Run a dummy bcrypt.compare() against a fixed hash when the
+                user is not found to normalize response timing.
+
+H5. JWT STORED IN LOCALSTORAGE (CMS ADMIN)
+    Location:   context/AuthContext.jsx
+    Severity:   HIGH
+    Detail:     The JWT token is stored in localStorage in the CMS admin
+                application. This makes it vulnerable to XSS-based token
+                theft, as any injected script can read localStorage.
+
+H6. CLIENT-SIDE-ONLY ROUTE PROTECTION (CMS ADMIN)
+    Location:   ProtectedRoute.jsx
+    Severity:   HIGH
+    Detail:     Admin UI route protection is enforced only on the client side.
+                An attacker can access admin pages by editing localStorage
+                directly. There is no server-side token verification on page
+                load.
+
+================================================================================
+                          MEDIUM FINDINGS (9)
+================================================================================
+
+M1. ACCOUNT LOCKOUT STORED IN-MEMORY ONLY
+    Severity:   MEDIUM
+    Detail:     Account lockout state is stored in application memory and
+                resets on server restart.
+
+M2. NO HTML/XSS SANITIZATION ON STORED CMS CONTENT
+    Severity:   MEDIUM
+    Detail:     Stored CMS content fields (titles, descriptions, bios) are
+                not sanitized for HTML or XSS payloads.
+
+M3. NO IMAGE URL VALIDATION
+    Severity:   MEDIUM
+    Detail:     The image_url field accepts javascript: URIs and data URIs
+                without validation.
+
+M4. LINK URL NOT VALIDATED IN BANNERS
+    Severity:   MEDIUM
+    Detail:     The link_url field in banners is not validated, allowing
+                potentially malicious URIs.
+
+M5. NO USERNAME INPUT VALIDATION
+    Severity:   MEDIUM
+    Detail:     No validation is performed on username input for length,
+                allowed characters, or format.
+
+M6. PASSWORD LENGTH NOT CAPPED
+    Severity:   MEDIUM
+    Detail:     bcrypt silently truncates passwords at 72 bytes. There is no
+                application-level cap or warning, meaning users may believe
+                their full password is used when it is not.
+
+M7. NO CSRF PROTECTION
+    Severity:   MEDIUM
+    Detail:     Despite withCredentials: true being set on the axios client,
+                there is no CSRF token mechanism in place.
+
+M8. NO CONTENT SECURITY POLICY ON NEXT.JS FRONTEND
+    Severity:   MEDIUM
+    Detail:     The Next.js frontend does not set Content Security Policy
+                headers.
+
+M9. UNVALIDATED IMAGE URL IN CSS BACKGROUND-IMAGE
+    Location:   HeroBanner component
+    Severity:   MEDIUM
+    Detail:     An image URL is used directly in a CSS background-image
+                property without validation.
+
+================================================================================
+                           LOW FINDINGS (7)
+================================================================================
+
+L1. NEXT.JS FRONTEND MISSING SECURITY HEADERS
+    Severity:   LOW
+    Detail:     The Next.js frontend is missing standard security headers and
+                exposes X-Powered-By: Next.js, revealing server technology.
+
+L2. FRAGILE BEARER TOKEN EXTRACTION
+    Severity:   LOW
+    Detail:     Bearer token extraction uses string replace instead of split,
+                which is fragile and may fail on edge cases.
+
+L3. UNVALIDATED FIELD TYPES
+    Severity:   LOW
+    Detail:     display_order and boolean fields accept arbitrary types
+                without validation.
+
+L4. NO STRUCTURED SECURITY EVENT LOGGING
+    Severity:   LOW
+    Detail:     Failed logins, account lockouts, and other security events
+                are not logged in a structured format for monitoring.
+
+L5. CLIENT-SIDE-ONLY FILE UPLOAD VALIDATION IN CMS
+    Severity:   LOW
+    Detail:     File upload validation in the CMS admin is performed only on
+                the client side. (Backend does have magic-byte validation.)
+
+L6. QUERY PARAMETERS NOT URL-ENCODED
+    Severity:   LOW
+    Detail:     Query parameters in the frontend API client are not
+                URL-encoded, which may cause issues with special characters.
+
+L7. NON-FUNCTIONAL NEWSLETTER FORM
+    Severity:   LOW
+    Detail:     The newsletter subscription form is non-functional but
+                displays a misleading "Sent!" confirmation to users.
+
+================================================================================
+                      LIVE ENDPOINT TEST RESULTS
+================================================================================
+
+Test                                        Result
+------------------------------------------  ------
+Security headers on backend                 PASS   (full Helmet suite)
+Security headers on CMS nginx               PASS   (all custom headers present)
+Security headers on frontend                FAIL   (missing, only X-Powered-By)
+CORS from evil origin                       PASS   (no Access-Control-Allow-Origin returned)
+Auth enforcement on POST/PUT/DELETE          PASS   (401 without token)
+SQL injection in query params               PASS   (parameterized queries)
+XSS in URL path                             PASS   (safe JSON response)
+Upload without auth                         PASS   (401)
+Directory listing blocked                   PASS
+Path traversal blocked                      PASS   (404)
+DB file access blocked                      PASS   (404)
+404 info disclosure                         PASS   (generic message)
+Malformed JSON                              PASS   (generic error, no stack trace)
+Rate limiting on login                      PASS   (429 after 5 attempts)
+
+Summary: 13 of 14 tests passed. 1 failure (frontend security headers).
+
+================================================================================
+                        POSITIVE OBSERVATIONS
+================================================================================
+
+  - Parameterized queries used everywhere (no SQL injection risk)
+  - bcrypt with cost factor 12 for password hashing
+  - Helmet security headers configured on backend
+  - httpOnly cookie support partially implemented
+  - File upload magic-byte validation on backend
+  - 10MB upload size limit enforced
+  - Generic error messages returned (no stack traces leaked)
+  - Account lockout mechanism in place (5 attempts, 15-minute window)
+
+================================================================================
+                      RECOMMENDED PRIORITY ORDER
+================================================================================
+
+  Priority  Items       Action
+  --------  ----------  -------------------------------------------------------
+  1         C1 + C2     Fix JWT secret handling and pin algorithm to HS256
+  2         H1 + H2     Add token revocation and session lifetime limits
+  3         H3          Add rate limiting to upload, register, refresh endpoints
+  4         H4          Fix timing oracle (dummy bcrypt on missing user)
+  5         H5 + H6     Migrate CMS auth to httpOnly cookies; add server-side
+                        token verification on page load
+  6         M2-M5       Input sanitization and URL validation
+  7         --          Address remaining medium and low findings
+
+================================================================================
+                            END OF REPORT
+================================================================================

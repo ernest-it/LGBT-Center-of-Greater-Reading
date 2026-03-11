@@ -1,0 +1,245 @@
+Docker Setup
+============
+
+Overview
+--------
+This project runs three containerized services:
+
+- Backend  -- Express.js REST API with SQLite, serving data and uploaded files on port 3001.
+- Frontend -- Next.js (SSR) public-facing website on port 3000.
+- CMS Admin -- Vite + React single-page app served by nginx on port 5173, used to manage site content.
+
+
+Prerequisites
+-------------
+- Docker (v20+)          https://docs.docker.com/get-docker/
+- Docker Compose (v2+)   Included with Docker Desktop
+
+
+Quick Start
+-----------
+1. Create your .env file from the example:
+
+   cp .env.example .env
+
+2. Generate and set a JWT secret:
+
+   openssl rand -base64 32
+
+   Paste the output as the value of JWT_SECRET in .env.
+
+3. Build and start all services:
+
+   docker compose up --build
+
+4. Open the applications:
+
+   Application   URL
+   ----------    ---
+   Frontend      http://localhost:3000
+   Backend API   http://localhost:3001/api
+   CMS Admin     http://localhost:5173
+
+5. Create the initial admin account by navigating to http://localhost:5173/setup in your browser.
+
+
+Services
+--------
+Service      Tech Stack                  Internal Port   Published Port   Networks
+-------      ----------                  -------------   --------------   --------
+backend      Node 20, Express, SQLite    3001            3001             internal, public
+frontend     Node 20, Next.js (SSR)      3000            3000             internal, public
+cms-admin    Vite + React, nginx         5173            5173             public
+
+
+Environment Variables
+---------------------
+All environment variables are configured in the root .env file and passed through docker-compose.yml.
+
+Variable         Required   Default                                        Description
+--------         --------   -------                                        -----------
+JWT_SECRET       Yes        (none -- container refuses to start without)   Secret key for signing JWT auth tokens. Generate with: openssl rand -base64 32
+NODE_ENV         No         development                                    Set to "production" for production deployments. Affects logging, JWT validation strictness.
+CORS_ORIGINS     No         http://localhost:3000,http://localhost:5173     Comma-separated list of origins allowed to make API requests.
+
+The following variables are set directly in docker-compose.yml and generally do not need to be changed for local development:
+
+Variable                  Set On      Value                          Description
+--------                  ------      -----                          -----------
+PORT                      backend     3001                           Port the Express server listens on inside the container.
+DB_PATH                   backend     ./database/lcgr.db             Path to the SQLite database file (inside the container).
+INTERNAL_API_URL          frontend    http://backend:3001/api        URL the Next.js server uses for SSR API calls over the Docker network.
+NEXT_PUBLIC_API_URL       frontend    http://localhost:3001/api      Public API URL baked into the client-side JavaScript bundle.
+NEXT_PUBLIC_BACKEND_URL   frontend    http://localhost:3001          Public backend URL used for resolving image paths in the browser.
+VITE_API_URL              cms-admin   http://localhost:3001/api      API URL baked into the CMS admin client bundle at build time.
+
+
+Architecture
+------------
+
+Browser (public network)
+  |
+  +---> :3000  frontend (Next.js)
+  |       |
+  |       +--- SSR fetch ---> backend:3001  (internal network, via INTERNAL_API_URL)
+  |       +--- client fetch -> localhost:3001 (public, via NEXT_PUBLIC_API_URL)
+  |
+  +---> :3001  backend (Express API + static uploads)
+  |
+  +---> :5173  cms-admin (nginx serving SPA)
+          |
+          +--- client fetch -> localhost:3001 (public, via VITE_API_URL)
+
+Two Docker networks are defined:
+
+- internal -- Connects backend and frontend. This allows Next.js server-side rendering to call
+  the backend API using the Docker service name (http://backend:3001/api) without going through
+  the host network.
+
+- public -- Connects all three services and exposes their ports to the host.
+
+The CMS admin panel is on the public network only because it is a static SPA -- all API calls
+originate from the user's browser, not from the nginx container.
+
+
+Data Persistence
+----------------
+Two named Docker volumes keep data across container restarts and rebuilds:
+
+Volume          Mounted At (in container)   Contents
+------          -------------------------   --------
+db-data         /app/database               SQLite database file (lcgr.db)
+uploads-data    /app/uploads                Uploaded images (banners, gallery, news, team)
+
+To inspect volume contents:
+
+   docker compose exec backend ls /app/database
+   docker compose exec backend ls /app/uploads
+
+To remove all data and start fresh:
+
+   docker compose down -v
+
+
+Common Commands
+---------------
+
+   # Start all services (detached)
+   docker compose up -d --build
+
+   # Stop all services
+   docker compose down
+
+   # View logs for all services
+   docker compose logs -f
+
+   # View logs for a specific service
+   docker compose logs -f backend
+   docker compose logs -f frontend
+   docker compose logs -f cms-admin
+
+   # Rebuild a single service after code changes
+   docker compose up -d --build backend
+
+   # Seed the database with sample content
+   docker compose exec backend npm run seed
+
+   # Open a shell inside the backend container
+   docker compose exec backend sh
+
+   # Check backend health
+   curl http://localhost:3001/api/health
+
+
+First-Time Setup
+----------------
+After all three containers are running and healthy:
+
+1. Open the CMS Admin panel at http://localhost:5173/setup.
+2. Create your initial admin account (username and password).
+3. Log in at http://localhost:5173 with those credentials.
+4. Use the CMS to manage banners, news/events, team members, and static page content.
+
+The setup endpoint is rate-limited (10 attempts per 15 minutes) for security.
+
+
+Production Considerations
+-------------------------
+- JWT_SECRET -- Must be a strong, unique value. The server will refuse to start in production
+  mode if the secret is missing or set to the default.
+
+- NODE_ENV -- Set to "production" in your .env file. This enables stricter JWT validation,
+  combined access logging, and production optimizations.
+
+- CORS_ORIGINS -- Update to your actual domain(s),
+  e.g., https://yourdomain.com,https://admin.yourdomain.com
+
+- NEXT_PUBLIC_API_URL / NEXT_PUBLIC_BACKEND_URL / VITE_API_URL -- These are baked into the
+  frontend and CMS admin bundles at build time. For production, update the build args in
+  docker-compose.yml to point to your actual API domain.
+
+- Reverse proxy -- Place a reverse proxy (nginx, Caddy, Traefik) in front of the three
+  services to handle TLS termination, domain routing, and additional security headers.
+
+- Image domains -- The Next.js config in next.config.js currently allows images from localhost
+  only. Update the images.domains array for your production domain.
+
+- Backups -- The SQLite database and uploads live in Docker volumes. Schedule regular backups
+  of these volumes.
+
+
+Troubleshooting
+---------------
+
+Container fails to start with "JWT_SECRET must be set"
+
+   The docker-compose.yml requires JWT_SECRET to be defined. Make sure your .env file exists
+   in the project root and contains a non-empty JWT_SECRET value.
+
+   Quick fix:
+      echo "JWT_SECRET=$(openssl rand -base64 32)" > .env
+
+
+Port already in use
+
+   Another process is using port 3000, 3001, or 5173. Either stop the conflicting process
+   or change the published port in docker-compose.yml (the left side of the port mapping):
+
+      ports:
+        - "8080:3001"   # now accessible on host port 8080
+
+
+Frontend shows no data / API errors in the browser console
+
+   - Verify the backend is healthy: curl http://localhost:3001/api/health
+   - Check that CORS_ORIGINS includes the frontend origin.
+   - If you changed the backend port, update NEXT_PUBLIC_API_URL and VITE_API_URL build args
+     and rebuild.
+
+
+Changes to code are not reflected
+
+   Docker caches build layers. Rebuild the affected service:
+
+      docker compose up -d --build frontend
+
+
+Need to reset everything
+
+      docker compose down -v --rmi local
+      docker compose up --build
+
+   This removes all containers, volumes (including the database and uploads), and locally
+   built images, then rebuilds from scratch.
+
+
+Security Features
+-----------------
+- All containers run as non-root users (node for Node.js, nginx for CMS)
+- no-new-privileges security option enabled on all containers
+- Nginx security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection,
+  Referrer-Policy, Permissions-Policy
+- Network isolation: backend only accessible from frontend via internal network
+- JWT secret is required (no default fallback)
+- Restart policy: unless-stopped on all services
+- Deterministic builds with npm ci (no fallback to npm install)
